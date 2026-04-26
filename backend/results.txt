@@ -1,0 +1,11 @@
+Model Evaluation Report
+=======================
+Best C value : 1
+Accuracy     : 0.6104
+Precision    : 0.7331
+Recall       : 0.6264
+F1 Score     : 0.6756
+ROC-AUC      : 0.6037
+Confusion Matrix:
+[[1038  619]
+ [ 378  524]]

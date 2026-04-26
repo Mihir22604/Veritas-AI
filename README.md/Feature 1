@@ -1,0 +1,320 @@
+Veritas-AI
+Feature 1: Fake vs Genuine News Classification
+
+This document describes Feature 1 of Veritas-AI — a machine-learning–based system that classifies news text as Fake or Genuine and returns a confidence score.
+This feature is fully implemented, tested, and exposed through a REST API.
+
+🎯 Feature Objective
+
+To build a reliable and reusable backend service that:
+
+Accepts raw news text
+
+Analyzes linguistic patterns using NLP
+
+Classifies the text as Fake or Genuine
+
+Returns a confidence percentage
+
+Exposes results through a FastAPI endpoint
+
+This feature serves as the foundation for future components such as explainability, credibility scoring, and dashboards.
+
+🧠 System Overview
+User Input (News Text)
+        ↓
+Text Preprocessing (Cleaning, Tokenization, Lemmatization)
+        ↓
+TF-IDF Feature Extraction
+        ↓
+Machine Learning Model (Logistic Regression)
+        ↓
+Prediction + Confidence Score
+        ↓
+JSON API Response
+
+📁 Project Structure (Feature 1)
+backend/
+│
+├── app/
+│   ├── api/v1/
+│   │   └── predict.py              # Prediction API endpoint
+│   ├── models/
+│   │   └── prediction_schema.py    # Request/Response schemas
+│   ├── services/
+│   │   └── ml_service.py           # Model loading & inference logic
+│   └── main.py                     # FastAPI app entry point
+│
+├── scripts/
+│   ├── preprocess_dataset.py       # Dataset preprocessing
+│   └── train_classifier.py         # Model training & evaluation
+│
+├── data/
+│   ├── data_raw/                   # Raw LIAR dataset (.tsv files)
+│   └── processed/
+│       └── cleaned_liar_dataset.csv
+│
+├── models/
+│   ├── fake_news_model.pkl         # Trained ML model
+│   └── vectorizer.pkl              # TF-IDF vectorizer
+│
+└── results.txt                     # Evaluation metrics
+
+🔹 Step 1: Dataset Used
+
+LIAR Dataset (Politifact statements)
+
+Train / Validation / Test .tsv files
+
+Binary classification derived as:
+
+Fake → pants-fire, false, barely-true, half-true
+
+Genuine → mostly-true, true
+
+Raw files stored in:
+
+data/data_raw/
+
+🔹 Step 2: Dataset Preprocessing
+
+Script:
+
+scripts/preprocess_dataset.py
+
+
+Preprocessing includes:
+
+Lowercasing text
+
+Removing URLs, numbers, and punctuation
+
+Tokenization using NLTK
+
+Stopword removal
+
+Lemmatization
+
+Mapping labels to Fake / Genuine
+
+Output:
+
+data/processed/cleaned_liar_dataset.csv
+
+
+Run:
+
+python scripts/preprocess_dataset.py
+
+🔹 Step 3: Model Training
+
+Script:
+
+scripts/train_classifier.py
+
+Model Pipeline
+
+TF-IDF Vectorizer
+
+Unigrams + Bigrams
+
+Max features: 5000
+
+Logistic Regression
+
+Class-balanced
+
+Hyperparameter tuning using GridSearchCV
+
+Evaluation Metrics
+
+Accuracy
+
+Precision
+
+Recall
+
+F1 Score
+
+ROC-AUC
+
+Confusion Matrix
+
+Metrics are logged and saved to:
+
+results.txt
+
+
+Artifacts saved to:
+
+models/
+ ├── fake_news_model.pkl
+ └── vectorizer.pkl
+
+
+Run:
+
+python scripts/train_classifier.py
+
+🔹 Step 4: ML Inference Service
+
+File:
+
+app/services/ml_service.py
+
+
+Responsibilities:
+
+Lazy-load model and vectorizer
+
+Validate input text
+
+Vectorize input using TF-IDF
+
+Predict label (Fake / Genuine)
+
+Compute confidence score (percentage)
+
+Output format:
+
+{
+  "label": "Fake",
+  "confidence": 69.71
+}
+
+🔹 Step 5: API Schema
+
+File:
+
+app/models/prediction_schema.py
+
+Request
+{
+  "text": "News content goes here"
+}
+
+Response
+{
+  "label": "Fake",
+  "confidence": 69.71
+}
+
+🔹 Step 6: Prediction API
+
+File:
+
+app/api/v1/predict.py
+
+
+Endpoint:
+
+POST /predict/
+
+
+Flow:
+
+Receive input text
+
+Validate request
+
+Run ML prediction
+
+Return JSON response
+
+🔹 Step 7: Run the Application
+
+From backend/ directory:
+
+uvicorn app.main:app --reload
+
+
+Health check:
+
+GET /health
+
+
+Prediction test:
+
+curl -X POST http://127.0.0.1:8000/predict/ \
+-H "Content-Type: application/json" \
+-d '{"text": "The government announced a new healthcare policy today."}'
+
+
+Sample response:
+
+{
+  "label": "Fake",
+  "confidence": 69.71
+}
+
+📌 Important Notes
+
+This system performs text-based classification, not real-world fact verification
+
+Predictions are based on linguistic patterns learned from the dataset
+
+Confidence represents model certainty, not factual truth
+
+Preprocessing during inference matches training exactly
+
+Step 9: Automated Testing (pytest)
+
+To ensure Feature-1 works reliably and remains stable during future updates, automated API tests are implemented using pytest and FastAPI’s TestClient.
+
+📁 Test File Location
+backend/app/tests/test_predict.py
+
+🧪 What Is Tested
+
+The test suite verifies:
+
+The /predict/ API endpoint is reachable
+
+The API returns HTTP 200 OK
+
+The response contains:
+
+label → Fake or Genuine
+
+confidence → numeric confidence score
+
+The ML inference pipeline works end-to-end
+
+▶️ Running Tests
+
+From the backend root directory, activate the virtual environment and run:
+
+python -m pytest
+
+✅ Expected Output
+============================= test session starts =============================
+collected X items
+
+app/tests/test_predict.py ...                                         [100%]
+
+============================== X passed in Xs ==============================
+
+
+A 100% passing test suite confirms that Feature-1 is production-ready and safely extensible.
+
+📌 Why Testing Matters
+
+Prevents API breaking changes
+
+Ensures ML model inference stability
+
+Supports future features like explanations, dashboards, and browser extensions
+
+Improves confidence during demos, reviews, and deployment
+
+✅ Feature 1 Status
+
+✔ Dataset preprocessing
+✔ Model training & evaluation
+✔ Confidence scoring
+✔ REST API integration
+✔ Error handling & validation
+✔ Successful runtime testing
+
+🎉 Feature 1 is fully completed and production-ready
+
