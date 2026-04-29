@@ -25,6 +25,7 @@ class FakeNewsClassifier:
 
             self.model = joblib.load(MODEL_PATH)
             self.vectorizer = joblib.load(VECTORIZER_PATH)
+            self._feature_names = self.vectorizer.get_feature_names_out()
 
     def predict(self, text: str) -> Dict[str, Any]:
         if not isinstance(text, str) or not text.strip():
@@ -41,7 +42,12 @@ class FakeNewsClassifier:
 
         return {
             "label": label,
-            "confidence": round(confidence * 100, 2)
+            "confidence": round(confidence * 100, 2),
+            "_metadata": {
+                "vector": text_tfidf,
+                "coef": self.model.coef_[0],
+                "feature_names": self._feature_names
+            }
         }
 
 

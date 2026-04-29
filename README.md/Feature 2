@@ -1,0 +1,113 @@
+# Feature 2: Explainable AI (Reason & Evidence System)
+
+## 📖 Overview
+
+Feature 2 introduces post-hoc interpretability into Veritas-AI, explaining *why* a news article is classified as Fake or Genuine.
+
+Unlike the core classification (Feature 1), this layer deconstructs the prediction by providing:
+- Key influencing words (driven by ML coefficients)
+- Suspicious or influential sentences
+- Linguistic pattern detection (e.g., Clickbait, Lack of Evidence)
+- Human-readable dynamic reasoning
+
+This transforms the application into a transparent and trustworthy AI platform without incurring heavy computational overhead like SHAP or LIME.
+
+---
+
+## 🔄 Execution Flow & Architecture
+
+This feature is tightly integrated with the ML pipeline to guarantee `O(1)` vectorization overhead.
+
+**Optimized Pipeline:**
+1. `predict.py` receives the incoming text.
+2. `classifier.py` performs the TF-IDF transform and Logistic Regression prediction.
+   - **Crucial Update**: It now returns a `_metadata` dictionary containing the sparse `tfidf_vector`, model `coef`, and cached `feature_names`.
+3. `explainer.py` (Explanation Service) receives the prediction and metadata.
+4. The service orchestrates three sub-modules (Word Importance, Text Analysis, Pattern Detection) and synthesizes a final `ExplanationResponse`.
+
+---
+
+## 🧠 Core Explainability Modules
+
+### 1. Word Importance Engine (`explainer.py`)
+- **Logic**: Directly maps the sparse CSR matrix indices to vocabulary words.
+- **Directional Filtering**: Calculates `contribution = TF-IDF Score * Model Coefficient`. 
+  - If the label is "Fake", it selects the top 5 positive contributions.
+  - If "Genuine", it selects the top 5 negative contributions.
+- **Performance**: Iterates only over non-zero indices (`vector.indices` and `vector.data`), avoiding dense array conversions.
+
+### 2. Sentence Analyzer (`text_analyzer.py`)
+- **Logic**: Segments text using `nltk.sent_tokenize`.
+- **Scoring**: Calculates a `raw_score` based on:
+  - **Keyword Impact**: Sum of absolute word contributions within the sentence.
+  - **Emotion**: VADER compound polarity merged with an emotional lexicon density check.
+  - **Structure**: Flags high exclamation counts and excessive capitalization.
+- **Normalization**: Applies Min-Max scaling to create a relative `0.0` to `1.0` suspiciousness index across the document. Safely falls back if variance is zero.
+- **Tie-Breaking**: Prioritizes Peak Word Score → Shortest Length → Earliest Position.
+
+### 3. Pattern Detector (`pattern_detector.py`)
+- **Precompiled Regex**: Quickly scans for Clickbait structures and Sensational language.
+- **Entity & Evidence Rule**: Flags "Lack of verifiable evidence (numbers or links)" if the text contains no digits (`\d`), no URLs, and fewer than 2 verifiable proper entities.
+- **Safety**: Sentence-initial capitalized words are ignored to prevent false-positive entity tagging.
+
+### 4. Reason Generator (`explainer.py`)
+- **Dynamic Assembly**: Avoids canned responses by piecing together a final string based strictly on triggered signals.
+- **Confidence Disclaimer**: If the base classification confidence drops below 60%, the generator automatically prepends a warning regarding signal subtlety.
+
+---
+
+## 📁 File Structure Update
+
+```text
+backend/app/
+├── api/v1/predict.py           # Updated to orchestrate explanation injection
+├── models/
+│   ├── prediction_schema.py    # Extended with Optional[ExplanationResponse]
+│   └── explain_schema.py       # [NEW] Defines the structured Explanation schema
+├── services/
+│   ├── ml_service.py           # Exposes model metadata via _metadata key
+│   ├── explainer.py            # [NEW] Core orchestration & Reason Generator
+│   ├── text_analyzer.py        # [NEW] NLTK sentence parsing & normalization
+│   └── pattern_detector.py     # [NEW] Regex and entity validation
+```
+
+---
+
+## 🔌 API Response Format
+
+```json
+{
+  "label": "Fake",
+  "confidence": 87.3,
+  "explanation": {
+    "keywords": ["shocking", "alien", "unbelievable"],
+    "highlighted_sentences": [
+      "Shocking news!!! The local bank was robbed by a massive alien spaceship."
+    ],
+    "patterns_detected": [
+      "Sensationalism",
+      "Clickbait phrasing"
+    ],
+    "reason": "The model predicts this as Fake. The text shows signs of: Sensationalism, Clickbait phrasing. The reasoning is heavily influenced by keywords like 'alien' and the tone in sentence: 'Shocking news!!! The local bank was robbed by a massive alien spaceship.'"
+  }
+}
+```
+
+---
+
+## ⚡ Performance Optimizations Implemented
+
+- **Vector Reuse**: TF-IDF transform occurs exactly once.
+- **Lazy Caching**: Feature names are cached in the `classifier` singleton on boot.
+- **Hard Constraints**: Sentence tokenization and scoring halts after 50 sentences to prevent high latency on large text dumps.
+- **Zero-Division Safety**: Advanced tie-breaking and bounds checking ensure 100% API uptime even on single-word inputs.
+
+---
+
+## ✅ Implementation Status
+- [x] Word importance extraction (Sparse matrix optimization)
+- [x] Sentence scoring (NLTK + VADER)
+- [x] Pattern detection (Precompiled Regex + Evidence rules)
+- [x] Explanation generation (Dynamic + Confidence-aware)
+- [x] API integration (Clean metadata stripping before JSON serialization)
+- [x] E2E Testing (Scripts validated in `backend/scripts/`)
